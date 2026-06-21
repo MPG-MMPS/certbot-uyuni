@@ -26,6 +26,7 @@ class UyuniInstallerTest(unittest.TestCase):
         self.config.uyuni_restart_timeout = 0
         self.installer = UyuniInstaller(self.config, "uyuni")
         self.installer.conf = mock.MagicMock(return_value=0)
+
     # -- prepare --
 
     @mock.patch.object(UyuniInstaller, "_container_running", return_value=True)
