@@ -4,6 +4,7 @@ import subprocess
 from typing import Callable, List, Optional, Union
 
 from certbot import errors, interfaces
+from certbot.display import util as display_util
 from certbot.plugins import common
 
 
@@ -40,7 +41,23 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
 
     def deploy_cert(self, domain: str, cert_path: str, key_path: str,
                     chain_path: str, fullchain_path: str) -> None:
-        pass
+        secrets = {
+            "uyuni-ca": chain_path,
+            "uyuni-cert": fullchain_path,
+            "uyuni-key": key_path,
+        }
+        for name, path in secrets.items():
+            proc = subprocess.run(
+                ["podman", "secret", "create", "--replace", name, path],
+                capture_output=True, check=False,
+            )
+            if proc.returncode != 0:
+                raise errors.PluginError(
+                    "Error updating secret %s:\n%s"
+                    % (name, proc.stderr.decode().strip()))
+        display_util.notify(
+            "Successfully deployed certificate for %s to Uyuni podman secrets"
+            % domain)
 
     def enhance(self, domain: str, enhancement: str,
                 options: Optional[Union[List[str], str]] = None) -> None:
