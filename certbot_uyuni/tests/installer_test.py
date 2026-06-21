@@ -25,7 +25,7 @@ class UyuniInstallerTest(unittest.TestCase):
         self.config = mock.MagicMock()
         self.config.uyuni_restart_timeout = 0
         self.installer = UyuniInstaller(self.config, "uyuni")
-        self.installer.conf = mock.MagicMock(return_value=0)
+        self.installer.conf = mock.MagicMock(return_value=0)  # type: ignore[method-assign]
 
     # -- prepare --
 
@@ -100,7 +100,7 @@ class UyuniInstallerTest(unittest.TestCase):
     @mock.patch("time.sleep")
     @mock.patch("subprocess.run")
     def test_restart_waits_for_healthy(self, mock_run: Any, _mock_sleep: Any) -> None:
-        self.installer.conf = mock.MagicMock(return_value=10)
+        self.installer.conf = mock.MagicMock(return_value=10)  # type: ignore[method-assign]
         mock_run.side_effect = [
             _mock_proc(),
             _mock_proc(stdout=b"healthy"),
@@ -114,7 +114,7 @@ class UyuniInstallerTest(unittest.TestCase):
     def test_restart_healthy_timeout(
         self, mock_run: Any, _mock_sleep: Any, mock_time: Any
     ) -> None:
-        self.installer.conf = mock.MagicMock(return_value=5)
+        self.installer.conf = mock.MagicMock(return_value=5)  # type: ignore[method-assign]
         mock_run.side_effect = [
             _mock_proc(),
             _mock_proc(stdout=b"starting"),
