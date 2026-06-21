@@ -35,4 +35,4 @@ disable_error_code = ["misc"]
 
 [[tool.mypy.overrides]]
 module = ["certbot_uyuni.tests.*"]
-warn_unused_ignores = false
+disable_error_code = ["method-assign"]
