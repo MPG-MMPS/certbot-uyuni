@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "certbot-uyuni"
+version = "0.1.0"
+description = "Uyuni Server plugin"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "Apache-2.0"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+    "Environment :: Plugins",
+]
+dependencies = ["certbot>=2.0"]
+
+[project.urls]
+Homepage = "https://github.com/MPG-MMPS/certbot-uyuni"
+
+[project.entry-points."certbot.plugins"]
+uyuni = "certbot_uyuni.installer:UyuniInstaller"
+
+[tool.mypy]
+strict = true
