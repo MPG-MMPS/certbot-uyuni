@@ -1,6 +1,7 @@
 """Uyuni installer plugin for Certbot."""
 import shutil
 import subprocess
+import time
 from typing import Callable, List, Optional, Union
 
 from certbot import errors, interfaces
@@ -9,6 +10,7 @@ from certbot.plugins import common
 
 
 UYUNI_CONTAINER = "uyuni-server"
+DEFAULT_RESTART_TIMEOUT = 300
 
 
 class UyuniInstaller(common.Plugin, interfaces.Installer):
@@ -18,7 +20,12 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
 
     @classmethod
     def add_parser_arguments(cls, add: Callable[..., None]) -> None:
-        pass
+        add(
+            "restart-timeout",
+            default=DEFAULT_RESTART_TIMEOUT, type=int,
+            help="Seconds to wait for the Uyuni server to "
+                 "come back after restart. "
+                 "(default: %d)" % DEFAULT_RESTART_TIMEOUT)
 
     def prepare(self) -> None:
         for cmd in ("podman", "mgradm"):
@@ -85,7 +92,25 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
         pass
 
     def restart(self) -> None:
-        pass
+        proc = subprocess.run(
+            ["mgradm", "restart"], capture_output=True, check=False,
+        )
+        if proc.returncode != 0:
+            raise errors.MisconfigurationError(
+                "Uyuni restart failed:\n%s" % proc.stderr.decode().strip())
+
+        timeout = self.conf("restart-timeout")
+        if timeout > 0:
+            self._wait_for_healthy(timeout)
+
+    def _wait_for_healthy(self, timeout: int) -> None:
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self._container_healthy():
+                return
+            time.sleep(1)
+        raise errors.MisconfigurationError(
+            "Uyuni server did not become healthy within %d seconds." % timeout)
 
     @staticmethod
     def _container_running() -> bool:
@@ -95,6 +120,17 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
             capture_output=True, check=False,
         )
         return proc.returncode == 0 and proc.stdout.decode().strip() == "true"
+
+    @staticmethod
+    def _container_healthy() -> bool:
+        proc = subprocess.run(
+            ["podman", "inspect", "--format",
+             "{{ .State.Health.Status }}",
+             UYUNI_CONTAINER],
+            capture_output=True, check=False,
+        )
+        status = proc.stdout.decode().strip()
+        return proc.returncode == 0 and status in ("healthy", "running")
 
     @staticmethod
     def _cmd_exists(cmd: str) -> bool:
