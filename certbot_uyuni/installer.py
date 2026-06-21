@@ -1,13 +1,15 @@
 """Uyuni installer plugin for Certbot."""
+import logging
 import shutil
 import subprocess
 import time
-from typing import Callable, List, Optional, Union
+from typing import Callable, Iterable, List, Optional, Union
 
 from certbot import errors, interfaces
 from certbot.display import util as display_util
 from certbot.plugins import common
 
+logger = logging.getLogger(__name__)
 
 UYUNI_CONTAINER = "uyuni-server"
 DEFAULT_RESTART_TIMEOUT = 300
@@ -43,7 +45,10 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
         return ("Deploys certificates to Uyuni "
                 "as podman secrets and restarts the server.")
 
-    def get_all_names(self) -> List[str]:
+    def get_all_names(self) -> Iterable[str]:
+        fqdn = self._get_uyuni_fqdn()
+        if fqdn:
+            return [fqdn]
         return []
 
     def deploy_cert(self, domain: str, cert_path: str, key_path: str,
@@ -111,6 +116,21 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
             time.sleep(1)
         raise errors.MisconfigurationError(
             "Uyuni server did not become healthy within %d seconds." % timeout)
+
+    def _get_uyuni_fqdn(self) -> Optional[str]:
+        proc = subprocess.run(
+            ["podman", "exec", UYUNI_CONTAINER, "sh", "-c",
+             "cat /etc/rhn/rhn.conf 2>/dev/null"
+             " | grep 'java.hostname'"
+             " | cut -d' ' -f3"],
+            capture_output=True, check=False,
+        )
+        if proc.returncode != 0:
+            logger.debug("Could not read Uyuni FQDN: %s",
+                         proc.stderr.decode().strip())
+            return None
+        fqdn = proc.stdout.decode().strip()
+        return fqdn or None
 
     @staticmethod
     def _container_running() -> bool:
