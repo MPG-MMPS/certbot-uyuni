@@ -46,8 +46,7 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
 
     def more_info(self) -> str:
         return (
-            "Deploys certificates to Uyuni "
-            "as podman secrets and restarts the server."
+            "Deploys certificates to Uyuni as podman secrets and restarts the server."
         )
 
     def get_all_names(self) -> Iterable[str]:
