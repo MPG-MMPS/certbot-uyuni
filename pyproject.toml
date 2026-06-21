@@ -16,6 +16,9 @@ classifiers = [
 ]
 dependencies = ["certbot>=2.0"]
 
+[project.optional-dependencies]
+dev = ["mypy>=2.1", "pytest>=8.0"]
+
 [project.urls]
 Homepage = "https://github.com/MPG-MMPS/certbot-uyuni"
 
