@@ -1,4 +1,5 @@
 """Uyuni installer plugin for Certbot."""
+
 import logging
 import shutil
 import subprocess
@@ -24,10 +25,12 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
     def add_parser_arguments(cls, add: Callable[..., None]) -> None:
         add(
             "restart-timeout",
-            default=DEFAULT_RESTART_TIMEOUT, type=int,
+            default=DEFAULT_RESTART_TIMEOUT,
+            type=int,
             help="Seconds to wait for the Uyuni server to "
-                 "come back after restart. "
-                 "(default: %d)" % DEFAULT_RESTART_TIMEOUT)
+            "come back after restart. "
+            "(default: %d)" % DEFAULT_RESTART_TIMEOUT,
+        )
 
     def prepare(self) -> None:
         for cmd in ("podman", "mgradm"):
@@ -36,14 +39,16 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
                     "Could not find a usable '%s' binary. "
                     "Ensure %s exists, the binary is "
                     "executable, and your PATH is set "
-                    "correctly." % (cmd, cmd))
+                    "correctly." % (cmd, cmd)
+                )
         if not self._container_running():
-            raise errors.NoInstallationError(
-                "Uyuni server container is not running.")
+            raise errors.NoInstallationError("Uyuni server container is not running.")
 
     def more_info(self) -> str:
-        return ("Deploys certificates to Uyuni "
-                "as podman secrets and restarts the server.")
+        return (
+            "Deploys certificates to Uyuni "
+            "as podman secrets and restarts the server."
+        )
 
     def get_all_names(self) -> Iterable[str]:
         fqdn = self._get_uyuni_fqdn()
@@ -51,8 +56,14 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
             return [fqdn]
         return []
 
-    def deploy_cert(self, domain: str, cert_path: str, key_path: str,
-                    chain_path: str, fullchain_path: str) -> None:
+    def deploy_cert(
+        self,
+        domain: str,
+        cert_path: str,
+        key_path: str,
+        chain_path: str,
+        fullchain_path: str,
+    ) -> None:
         secrets = {
             "uyuni-ca": chain_path,
             "uyuni-cert": fullchain_path,
@@ -61,26 +72,30 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
         for name, path in secrets.items():
             proc = subprocess.run(
                 ["podman", "secret", "create", "--replace", name, path],
-                capture_output=True, check=False,
+                capture_output=True,
+                check=False,
             )
             if proc.returncode != 0:
                 raise errors.PluginError(
                     "Error updating secret %s:\n%s"
-                    % (name, proc.stderr.decode().strip()))
+                    % (name, proc.stderr.decode().strip())
+                )
         display_util.notify(
-            "Successfully deployed certificate for %s to Uyuni podman secrets"
-            % domain)
+            "Successfully deployed certificate for %s to Uyuni podman secrets" % domain
+        )
 
-    def enhance(self, domain: str, enhancement: str,
-                options: Optional[Union[List[str], str]] = None) -> None:
-        raise errors.PluginError(
-            "Enhancements are not supported for Uyuni.")
+    def enhance(
+        self,
+        domain: str,
+        enhancement: str,
+        options: Optional[Union[List[str], str]] = None,
+    ) -> None:
+        raise errors.PluginError("Enhancements are not supported for Uyuni.")
 
     def supported_enhancements(self) -> List[str]:
         return []
 
-    def save(self, title: Optional[str] = None,
-             temporary: bool = False) -> None:
+    def save(self, title: Optional[str] = None, temporary: bool = False) -> None:
         # No checkpoint system; secrets are replaced in-place.
         pass
 
@@ -98,11 +113,14 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
 
     def restart(self) -> None:
         proc = subprocess.run(
-            ["mgradm", "restart"], capture_output=True, check=False,
+            ["mgradm", "restart"],
+            capture_output=True,
+            check=False,
         )
         if proc.returncode != 0:
             raise errors.MisconfigurationError(
-                "Uyuni restart failed:\n%s" % proc.stderr.decode().strip())
+                "Uyuni restart failed:\n%s" % proc.stderr.decode().strip()
+            )
 
         timeout = self.conf("restart-timeout")
         if timeout > 0:
@@ -115,19 +133,26 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
                 return
             time.sleep(1)
         raise errors.MisconfigurationError(
-            "Uyuni server did not become healthy within %d seconds." % timeout)
+            "Uyuni server did not become healthy within %d seconds." % timeout
+        )
 
     def _get_uyuni_fqdn(self) -> Optional[str]:
         proc = subprocess.run(
-            ["podman", "exec", UYUNI_CONTAINER, "sh", "-c",
-             "cat /etc/rhn/rhn.conf 2>/dev/null"
-             " | grep 'java.hostname'"
-             " | cut -d' ' -f3"],
-            capture_output=True, check=False,
+            [
+                "podman",
+                "exec",
+                UYUNI_CONTAINER,
+                "sh",
+                "-c",
+                "cat /etc/rhn/rhn.conf 2>/dev/null"
+                " | grep 'java.hostname'"
+                " | cut -d' ' -f3",
+            ],
+            capture_output=True,
+            check=False,
         )
         if proc.returncode != 0:
-            logger.debug("Could not read Uyuni FQDN: %s",
-                         proc.stderr.decode().strip())
+            logger.debug("Could not read Uyuni FQDN: %s", proc.stderr.decode().strip())
             return None
         fqdn = proc.stdout.decode().strip()
         return fqdn or None
@@ -135,19 +160,24 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
     @staticmethod
     def _container_running() -> bool:
         proc = subprocess.run(
-            ["podman", "inspect", "--format",
-             "{{.State.Running}}", UYUNI_CONTAINER],
-            capture_output=True, check=False,
+            ["podman", "inspect", "--format", "{{.State.Running}}", UYUNI_CONTAINER],
+            capture_output=True,
+            check=False,
         )
         return proc.returncode == 0 and proc.stdout.decode().strip() == "true"
 
     @staticmethod
     def _container_healthy() -> bool:
         proc = subprocess.run(
-            ["podman", "inspect", "--format",
-             "{{ .State.Health.Status }}",
-             UYUNI_CONTAINER],
-            capture_output=True, check=False,
+            [
+                "podman",
+                "inspect",
+                "--format",
+                "{{ .State.Health.Status }}",
+                UYUNI_CONTAINER,
+            ],
+            capture_output=True,
+            check=False,
         )
         status = proc.stdout.decode().strip()
         return proc.returncode == 0 and status in ("healthy", "running")
