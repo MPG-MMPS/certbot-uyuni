@@ -1,4 +1,6 @@
 """Uyuni installer plugin for Certbot."""
+import shutil
+import subprocess
 from typing import Callable, List, Optional, Union
 
 from certbot import errors, interfaces
@@ -18,7 +20,16 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
         pass
 
     def prepare(self) -> None:
-        pass
+        for cmd in ("podman", "mgradm"):
+            if not self._cmd_exists(cmd):
+                raise errors.NoInstallationError(
+                    "Could not find a usable '%s' binary. "
+                    "Ensure %s exists, the binary is "
+                    "executable, and your PATH is set "
+                    "correctly." % (cmd, cmd))
+        if not self._container_running():
+            raise errors.NoInstallationError(
+                "Uyuni server container is not running.")
 
     def more_info(self) -> str:
         return ("Deploys certificates to Uyuni "
@@ -58,3 +69,16 @@ class UyuniInstaller(common.Plugin, interfaces.Installer):
 
     def restart(self) -> None:
         pass
+
+    @staticmethod
+    def _container_running() -> bool:
+        proc = subprocess.run(
+            ["podman", "inspect", "--format",
+             "{{.State.Running}}", UYUNI_CONTAINER],
+            capture_output=True, check=False,
+        )
+        return proc.returncode == 0 and proc.stdout.decode().strip() == "true"
+
+    @staticmethod
+    def _cmd_exists(cmd: str) -> bool:
+        return shutil.which(cmd) is not None
