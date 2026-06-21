@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "certbot-uyuni"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Uyuni Server plugin"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,6 +24,8 @@ Homepage = "https://github.com/MPG-MMPS/certbot-uyuni"
 
 [project.entry-points."certbot.plugins"]
 uyuni = "certbot_uyuni.installer:UyuniInstaller"
+
+[tool.setuptools_scm]
 
 [tool.mypy]
 strict = true
